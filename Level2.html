@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="zh-TW">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>食力大挑戰 - 第二關：良好飲食選擇</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  
+  /* 深色劇院背景 */
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background-color: #222; 
+    display: flex; justify-content: center; align-items: center;
+  }
+
+  /* 鎖定 16:9 比例的遊戲容器 */
+  #game-container {
+    width: 100vw; max-width: 1280px; aspect-ratio: 16 / 9;
+    background: linear-gradient(135deg, #FFF8E7 0%, #FFE8D6 50%, #E8F5E9 100%);
+    position: relative; overflow: hidden; box-shadow: 0 0 30px rgba(0,0,0,0.8);
+  }
+
+  .screen {
+    display: none; width: 100%; height: 100%; padding: 20px;
+    position: absolute; top: 0; left: 0;
+    flex-direction: column; align-items: center; justify-content: center; overflow-y: auto;
+  }
+  .screen.active { display: flex; }
+
+  /* ===== 共用按鈕與標題 ===== */
+  .game-title { font-size: 40px; font-weight: 900; color: #E65100; text-shadow: 2px 2px 0 #FFB347; margin-bottom: 8px; text-align: center;}
+  .game-subtitle { font-size: 18px; color: #FF7043; margin-bottom: 24px; font-weight: 700; text-align: center; line-height: 1.5;}
+  
+  .primary-btn {
+    background: linear-gradient(135deg, #FF7043, #E64A19); color: white; border: none; padding: 14px 40px; font-size: 20px;
+    font-weight: 700; border-radius: 16px; cursor: pointer; transition: all 0.2s; font-family: inherit; box-shadow: 0 4px 12px rgba(230,74,25,0.3);
+  }
+  .primary-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(230,74,25,0.5); }
+  .primary-btn:disabled { background: #B0BEC5; cursor: not-allowed; box-shadow: none; color: #ECEFF1; }
+
+  /* ===== 開始畫面 ===== */
+  .lobby-card {
+    background: rgba(255, 255, 255, 0.95); border-radius: 24px; padding: 30px 40px; text-align: center; max-width: 500px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+  }
+  .name-input {
+    width: 100%; padding: 14px; font-size: 18px; border: 3px solid #FFB347; border-radius: 16px; outline: none; text-align: center; margin-bottom: 20px; font-family: inherit;
+  }
+  .char-select-title { font-size: 16px; font-weight: 700; color: #666; margin-bottom: 12px; }
+  .char-options { display: flex; justify-content: center; gap: 16px; margin-bottom: 24px; }
+  .char-btn { background: #FFF3E0; border: 3px solid transparent; border-radius: 16px; padding: 12px 20px; font-size: 40px; cursor: pointer; transition: all 0.2s; }
+  .char-btn.selected { border-color: #FF7043; background: #FFE0B2; transform: scale(1.1); box-shadow: 0 4px 12px rgba(255,112,67,0.3); }
+
+  /* ===== 教材畫面 ===== */
+  .carousel-wrap {
+    background: white; border-radius: 20px; padding: 24px; max-width: 800px; width: 100%; box-shadow: 0 8px 24px rgba(0,0,0,0.1); margin-bottom: 20px;
+  }
+  .carousel-content { display: none; text-align: center; }
+  .carousel-content.active { display: block; animation: fadeIn 0.4s; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .carousel-nav { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+  .nav-btn { background: #64B5F6; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+  .nav-btn:hover:not(:disabled) { background: #1E88E5; }
+  .nav-btn:disabled { background: #CFD8DC; cursor: not-allowed; color: #90A4AE; }
+
+  /* ===== 遊戲共用 Header ===== */
+  .game-header {
+    background: white; border-radius: 16px; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;
+    width: 100%; max-width: 800px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .badge { background: linear-gradient(135deg, #1E88E5, #0D47A1); color: white; border-radius: 10px; padding: 6px 16px; font-weight: 700; }
+  .score-box { background: #FF7043; color: white; border-radius: 10px; padding: 6px 16px; font-weight: 800; }
+
+  /* ===== 階段一：RPG 購物 ===== */
+  .rpg-container {
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%23f0f0f0" width="100" height="100"/><path d="M0 80 h100 v20 H0 z" fill="%23dcdcdc"/></svg>') center/cover;
+    border-radius: 20px; max-width: 800px; width: 100%; flex: 1; min-height: 350px; position: relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid #fff;
+  }
+  .rpg-item-card { background: white; border-radius: 20px; padding: 24px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.15); width: 80%; max-width: 400px; z-index: 2; }
+  .rpg-emoji { font-size: 80px; margin-bottom: 12px; }
+  .rpg-name { font-size: 22px; font-weight: 900; color: #333; margin-bottom: 8px; }
+  .rpg-desc { font-size: 15px; color: #666; margin-bottom: 24px; line-height: 1.5; }
+  .rpg-actions { display: flex; justify-content: center; gap: 16px; }
+  .action-btn { border: none; padding: 12px 24px; font-size: 18px; font-weight: 700; border-radius: 12px; cursor: pointer; flex: 1; transition: all 0.2s; font-family: inherit; color: white; }
+  .btn-buy { background: #4CAF50; } .btn-buy:hover { background: #388E3C; transform: scale(1.05); }
+  .btn-pass { background: #E53935; } .btn-pass:hover { background: #C62828; transform: scale(1.05); }
+
+  .player-avatar-area { position: absolute; bottom: -15px; left: 20px; display: flex; align-items: flex-end; z-index: 5; }
+  .avatar-emoji { font-size: 70px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2)); }
+  .speech-bubble {
+    background: white; border-radius: 16px; padding: 10px 16px; font-size: 14px; font-weight: 700; color: #1976D2; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 40px; margin-left: -10px; position: relative;
+  }
+  .speech-bubble::before { content: ''; position: absolute; bottom: -8px; left: 20px; border-width: 8px 8px 0 0; border-style: solid; border-color: white transparent transparent transparent; }
+
+  /* ===== 階段二：拖曳分類 ===== */
+  .drag-container { display: flex; flex-direction: column; width: 100%; max-width: 800px; flex: 1; gap: 16px; }
+  .drag-pool { background: white; border-radius: 16px; padding: 16px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-height: 100px;}
+  .drag-item {
+    background: linear-gradient(135deg, #FFF8E7, #FFE0B2); border: 2px solid #FFB347; border-radius: 12px; padding: 10px 16px;
+    font-size: 15px; font-weight: 700; color: #E65100; cursor: grab; user-select: none; transition: transform 0.2s;
+  }
+  .drag-item:active { cursor: grabbing; transform: scale(1.1); }
+  .drag-item.placed { opacity: 0.3; pointer-events: none; }
+  
+  .drop-zones { display: flex; gap: 16px; width: 100%; flex: 1; }
+  .zone {
+    flex: 1; border-radius: 20px; padding: 20px; border: 4px dashed #ccc; display: flex; flex-direction: column; align-items: center;
+    background: rgba(255,255,255,0.8); transition: all 0.2s;
+  }
+  .zone.drag-over { transform: scale(1.02); }
+  .zone-healthy { border-color: #4CAF50; } .zone-healthy.drag-over { background: #E8F5E9; border-color: #2E7D32; }
+  .zone-trash { border-color: #E53935; } .zone-trash.drag-over { background: #FFEBEE; border-color: #C62828; }
+  .zone-title { font-size: 20px; font-weight: 900; margin-bottom: 12px; }
+  .placed-items { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; width: 100%; }
+  .placed-tag { border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; color: white; }
+  .placed-tag.correct { background: #4CAF50; }
+  .placed-tag.wrong { background: #E53935; }
+
+  /* ===== 階段三：情境問答 ===== */
+  .quiz-area { background: white; border-radius: 20px; padding: 30px; max-width: 800px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .quiz-q { font-size: 20px; font-weight: 700; color: #333; margin-bottom: 24px; line-height: 1.5; }
+  .quiz-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .opt-btn {
+    background: #F5F5F5; border: 2px solid #E0E0E0; border-radius: 12px; padding: 16px; cursor: pointer;
+    font-size: 16px; font-weight: 600; text-align: left; color: #444; transition: all 0.2s; font-family: inherit; line-height: 1.4;
+  }
+  .opt-btn:hover:not(:disabled) { background: #E3F2FD; border-color: #64B5F6; color: #1565C0; }
+  .opt-btn.correct { background: #E8F5E9; border-color: #4CAF50; color: #2E7D32; }
+  .opt-btn.wrong { background: #FFEBEE; border-color: #E53935; color: #C62828; }
+
+  /* 回饋彈窗 */
+  .feedback-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+  }
+  .feedback-box {
+    background: white; border-radius: 20px; padding: 30px; text-align: center; max-width: 400px; width: 90%;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .fb-icon { font-size: 60px; margin-bottom: 12px; }
+  .fb-title { font-size: 24px; font-weight: 900; margin-bottom: 8px; }
+  .fb-desc { font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; text-align: left; }
+
+  @media (max-width: 600px) { .quiz-opts, .drop-zones { flex-direction: column; } .quiz-opts { grid-template-columns: 1fr; } }
+  </style>
+ </head>
+ <body>
+  <div id="game-container">
+   
+   <!-- ===== 開始畫面 ===== -->
+   <div id="lobby-screen" class="screen active">
+    <div class="lobby-card">
+     <div class="game-title">🏪 營養闖關島</div>
+     <div class="game-subtitle">第二關：良好飲食選擇<br><span style="font-size:14px;color:#888;">(通關門檻：280 分)</span></div>
+     <input type="text" id="player-name" class="name-input" placeholder="輸入你的名字" maxlength="10"> 
+     
+     <div class="char-select-title">選擇你的探險化身：</div>
+     <div class="char-options">
+       <button class="char-btn" onclick="selectChar('🍎', this)">🍎</button>
+       <button class="char-btn selected" onclick="selectChar('🍌', this)">🍌</button>
+       <button class="char-btn" onclick="selectChar('🍊', this)">🍊</button>
+     </div>
+     <button class="primary-btn" onclick="startTutorial()">進入教材區</button>
+    </div>
+   </div>
+   
+   <!-- ===== 教材畫面 ===== -->
+   <div id="tutorial-screen" class="screen">
+    <div class="game-title" style="color: #1565C0; text-shadow: none;">📚 購物前導訓練</div>
+    <div class="game-subtitle" style="color: #666;">仔細閱讀每張教材，為挑戰做準備！</div>
+     
+    <div class="carousel-wrap">
+      <div class="carousel-content active"><img src="良好飲食選擇_1.JPG" style="width: 100%; border-radius: 12px;"></div>
+      <div class="carousel-content"><img src="良好飲食選擇_2.JPG" style="width: 100%; border-radius: 12px;"></div>
+      <div class="carousel-content"><img src="良好飲食選擇_3.JPG" style="width: 100%; border-radius: 12px;"></div>
+      <div class="carousel-content"><img src="良好飲食選擇_4.JPG" style="width: 100%; border-radius: 12px;"></div>
+      <div class="carousel-content"><img src="良好飲食選擇_5.JPG" style="width: 100%; border-radius: 12px;"></div>
+      <div class="carousel-content"><img src="良好飲食選擇_6.JPG" style="width: 100%; border-radius: 12px;"></div>
+      <div class="carousel-content"><img src="良好飲食選擇_7.JPG" style="width: 100%; border-radius: 12px;"></div>
+      <div class="carousel-content"><img src="良好飲食選擇_8.JPG" style="width: 100%; border-radius: 12px;"></div>
+      
+      <div class="carousel-nav" id="carousel-nav">
+        <!-- 控制按鈕由 JS 動態生成，包含計時器 -->
+      </div>
+      <div class="carousel-indicator" style="text-align: center; color: #888; margin-top: 10px;"><span id="carousel-page">1</span> / 8</div>
+    </div>
+   </div>
+
+   <!-- ===== 階段一：RPG 購物 ===== -->
+   <div id="rpg-screen" class="screen">
+    <div class="game-header">
+     <div class="badge">階段一：超商採購模擬</div>
+     <div style="font-weight: 700; color: #333;">進度：<span id="rpg-progress">1</span> / 15</div>
+     <div class="score-box">積分 <span id="rpg-score">0</span></div>
+    </div>
+    
+    <div class="rpg-container">
+      <div class="rpg-item-card" id="rpg-card">
+        <div class="rpg-emoji" id="rpg-item-emoji">🍱</div>
+        <div class="rpg-name" id="rpg-item-name">載入中...</div>
+        <div class="rpg-desc" id="rpg-item-desc">載入中...</div>
+        <div class="rpg-actions">
+          <button class="action-btn btn-pass" onclick="handleRpgChoice('pass')">❌ 放回架上</button>
+          <button class="action-btn btn-buy" onclick="handleRpgChoice('buy')">🛒 放入購物車</button>
+        </div>
+      </div>
+      <div class="player-avatar-area">
+        <div class="avatar-emoji player-avatar-display">🍌</div>
+        <div class="speech-bubble" id="player-speech">這個好嗎？幫我決定！</div>
+      </div>
+    </div>
+   </div>
+
+   <!-- ===== 階段二：拖曳分類 ===== -->
+   <div id="drag-screen" class="screen">
+    <div class="game-header">
+     <div class="badge" style="background: linear-gradient(135deg, #00897B, #004D40);">階段二：健康餐盤分類</div>
+     <div style="font-weight: 700; color: #333;">剩餘：<span id="drag-left">10</span></div>
+     <div class="score-box" style="background: #00897B;">積分 <span id="drag-score">0</span></div>
+    </div>
+
+    <div class="drag-container">
+      <div style="text-align: center; font-weight: 700; color: #333;">將下方食物拖曳到正確的區域！</div>
+      <div class="drag-pool" id="drag-pool"></div>
+      
+      <div class="drop-zones">
+        <div class="zone zone-healthy" data-type="healthy">
+          <div class="zone-title" style="color: #2E7D32;">🍱 健康餐盒</div>
+          <div class="placed-items" id="zone-healthy-items"></div>
+        </div>
+        <div class="zone zone-trash" data-type="unhealthy">
+          <div class="zone-title" style="color: #C62828;">🗑️ 地雷回收桶</div>
+          <div class="placed-items" id="zone-trash-items"></div>
+        </div>
+      </div>
+    </div>
+   </div>
+   
+   <!-- ===== 階段三：情境問答 ===== -->
+   <div id="quiz-screen" class="screen">
+    <div class="game-header">
+     <div class="badge" style="background: linear-gradient(135deg, #8E24AA, #512DA8);">階段三：知識大考驗</div>
+     <div style="font-weight: 700; color: #333;">題號：<span id="quiz-progress">1</span> / 15</div>
+     <div class="score-box" style="background: #8E24AA;">積分 <span id="quiz-score-display">0</span></div>
+    </div>
+    
+    <div class="quiz-area">
+     <div style="background: #FFF3E0; border-left: 4px solid #FF9800; padding: 12px; margin-bottom: 20px; font-size: 15px; color: #555; border-radius: 0 8px 8px 0;">
+       <strong>情境說明：</strong>請利用你學到的知識，幫助同學小明做出正確的選擇，並計算熱量！
+     </div>
+     <div class="quiz-q" id="quiz-q">題目載入中...</div>
+     <div class="quiz-opts" id="quiz-opts"></div>
+    </div>
+   </div>
+   
+   <!-- ===== 結果畫面 ===== -->
+   <div id="result-screen" class="screen">
+    <div class="lobby-card" style="max-width: 600px;">
+     <div style="font-size: 70px; margin-bottom: 10px;" id="result-emoji">🏆</div>
+     <div class="game-title" id="result-title">闖關成功！</div>
+     <div style="font-size: 20px; color: #333; margin-bottom: 20px;" id="final-name"></div>
+     
+     <div style="background: #FFF3E0; border-radius: 16px; padding: 20px; margin-bottom: 16px;">
+        <div style="font-size: 50px; font-weight: 900; color: #E65100; line-height: 1;" id="final-score">0</div>
+        <div style="font-size: 14px; color: #888; margin-top: 8px;">總積分 (滿分 400 分)</div>
+     </div>
+     <div style="font-size: 15px; color: #555; line-height: 1.6; margin-bottom: 24px;" id="result-msg"></div>
+     
+     <button class="primary-btn" id="result-btn">完成任務 👋</button>
+    </div>
+   </div>
+
+   <!-- ===== 彈出回饋框 ===== -->
+   <div class="feedback-overlay" id="feedback-modal">
+     <div class="feedback-box">
+       <div class="fb-icon" id="fb-icon">✅</div>
+       <div class="fb-title" id="fb-title" style="color: #4CAF50;">答對了！</div>
+       <div class="fb-desc" id="fb-desc">解說文字...</div>
+       <button class="primary-btn" id="fb-btn" style="width: 100%; padding: 10px;">繼續</button>
+     </div>
+   </div>
+   
+  </div>
+
+  <script>
+  /* ===== 遊戲資料區 ===== */
+  const gameState = {
+    name: '', character: '🍌',
+    tutPage: 0,
+    rpgScore: 0, rpgStep: 0,
+    dragScore: 0, dragLeft: 10,
+    quizScore: 0, quizStep: 0,
+  };
+  const PASSING_SCORE = 280; // 通關門檻
+
+  // 1. RPG 購物模擬 (15題)
+  const rpgItems = [
+    { emoji: '🍱', name: '炸雞排便當', desc: '很香但蔬菜少，熱量和油脂都非常高。', correct: 'pass', explain: '熱量過高且缺乏膳食纖維，不適合當健康午餐。' },
+    { emoji: '🥗', name: '烤雞腿生菜沙拉', desc: '豐富蔬菜和蛋白質，搭配低熱量和風醬。', correct: 'buy', explain: '有蔬菜也有優質蛋白質，是均衡的好選擇！' },
+    { emoji: '🧋', name: '大杯全糖珍珠奶茶', desc: '超甜的限定口味，喝起來很滿足。', correct: 'pass', explain: '含糖飲料是空熱量食物，易發胖且讓人昏昏欲睡！' },
+    { emoji: '🥛', name: '無糖豆漿', desc: '成分只有黃豆和水，提供植物性蛋白。', correct: 'buy', explain: '熱量低、蛋白質豐富，是健康的飲品。' },
+    { emoji: '🍢', name: '關東煮：蘿蔔海帶', desc: '熱騰騰的蔬菜類關東煮。', correct: 'buy', explain: '蘿蔔和海帶熱量低，是補充膳食纖維的好方法。' },
+    { emoji: '🥐', name: '巧克力夾心大麵包', desc: '裡面包滿巧克力醬。', correct: 'pass', explain: '精緻澱粉加上大量糖分，吃完血糖會快速上升！' },
+    { emoji: '🍠', name: '烤地瓜＋茶葉蛋', desc: '現烤地瓜搭配熱茶葉蛋。', correct: 'buy', explain: '地瓜富含膳食纖維，茶葉蛋提供蛋白質，完美組合。' },
+    { emoji: '🌭', name: '大亨堡加番茄醬', desc: '微波熱狗麵包加上甜甜的番茄醬。', correct: 'pass', explain: '熱狗是加工肉品含高鈉高脂，番茄醬也含許多糖。' },
+    { emoji: '🥣', name: '無加糖原味優格', desc: '成分單純無額外添加糖。', correct: 'buy', explain: '能提供鈣質與好菌，幫助腸胃蠕動！' },
+    { emoji: '🍜', name: '大碗泡麵', desc: '湯頭很鹹很夠味。', correct: 'pass', explain: '泡麵鈉含量極高，容易對腎臟造成負擔。' },
+    { emoji: '🍎', name: '新鮮蘋果', desc: '外觀完整顏色的原態水果。', correct: 'buy', explain: '天然原態食物，能攝取到完整的維生素。' },
+    { emoji: '🍬', name: '散裝鮮豔糖果', desc: '沒有標示製造日期的散裝糖。', correct: 'pass', explain: '散裝食品成分不明，且容易受空氣污染。' },
+    { emoji: '🐄', name: '鮮乳標章鮮奶', desc: '貼有牛貼紙標章的冷藏鮮奶。', correct: 'buy', explain: '鮮乳標章代表100%國產純鮮乳，安心有保障。' },
+    { emoji: '🥫', name: '凹陷的水蜜桃罐頭', desc: '正在特價但外觀有凹陷生鏽。', correct: 'pass', explain: '外觀凹陷或破損的罐頭可能已失去真空、滋生細菌！' },
+    { emoji: '🥜', name: '無調味綜合堅果', desc: '標示無添加鹽與糖的堅果。', correct: 'buy', explain: '無調味堅果提供健康油脂，是很好的點心。' }
+  ];
+
+  // 2. 拖曳分類 (10個食物)
+  const dragItemsData = [
+    { name: '無糖豆漿', type: 'healthy' }, { name: '炸雞排', type: 'unhealthy' },
+    { name: '生菜沙拉', type: 'healthy' }, { name: '珍珠奶茶', type: 'unhealthy' },
+    { name: '茶葉蛋', type: 'healthy' },   { name: '大碗泡麵', type: 'unhealthy' },
+    { name: '烤地瓜', type: 'healthy' },   { name: '巧克力麵包', type: 'unhealthy' },
+    { name: '新鮮蘋果', type: 'healthy' }, { name: '散裝糖果', type: 'unhealthy' }
+  ];
+
+  // 3. 情境問答 (15題：含數學與進階情境)
+  const quizItems = [
+    { q: '購買包裝食品時，下列哪一個「不是」法定的 8 大必備標示？', opts: ['廣告代言人', '有效日期', '營養標示', '內容物名稱'], ans: 0, exp: '代言人不屬於法定標示。' },
+    { q: '【熱量計算】一包餅乾每一份量是 120 大卡，本包裝含 4 份。如果小明吃了一半(半包)，他攝取了多少大卡？', opts: ['120大卡', '240大卡', '480大卡', '600大卡'], ans: 1, exp: '整包4份共480大卡，吃半包(2份)就是 120 × 2 = 240大卡。' },
+    { q: '聰明購物的「停 (STOP)」是指購買前要冷靜思考什麼？', opts: ['這是需要還是想要？', '包裝好不好看？', '有沒有打折？', '有沒有送玩具？'], ans: 0, exp: '區分需要還是想要，能避免衝動購買空熱量食物。' },
+    { q: '如果發現食品包裝有「異常膨脹」的現象，代表什麼？', opts: ['份量變多了', '內部可能已滋生細菌產生氣體', '這是正常包裝', '食物發酵變好吃了'], ans: 1, exp: '膨脹代表食物可能變質，吃下肚會造成食物中毒！' },
+    { q: '包裝上的「健康食品標章(小綠人)」代表什麼意義？', opts: ['熱量為零', '經實驗證明具有實質保健功效', '吃再多都不會胖', '是進口食品'], ans: 1, exp: '小綠人代表經過科學驗證具保健功效。' },
+    { q: '散裝食品相較於包裝食品，最需注意什麼問題？', opts: ['比較貴', '衛生條件與保存狀態不明', '包裝不環保', '顏色不鮮豔'], ans: 1, exp: '散裝食品常缺乏效期與成分標示，且易受污染。' },
+    { q: '看營養標示時，為了健康，我們應盡量選擇哪種數值「較低」的食品？', opts: ['蛋白質、鈣質', '膳食纖維', '糖、鈉、反式脂肪', '總重量'], ans: 2, exp: '過多的糖、鈉和反式脂肪會增加肥胖與心血管疾病風險。' },
+    { q: '如果成分表列出：「水、蔗糖、蘋果濃縮汁、香料」，代表哪個成分含量最多？', opts: ['水', '蔗糖', '蘋果濃縮汁', '香料'], ans: 0, exp: '食品成分表是依照「含量多寡」由高到低排列的。' },
+    { q: '【不同場合】運動會剛跑完大隊接力滿頭大汗，應該選擇什麼補充水分？', opts: ['白開水或運動飲料', '全糖珍珠奶茶', '濃湯', '可樂'], ans: 0, exp: '大量流汗後最適合白開水或補充電解質的運動飲料。' },
+    { q: '【不同場合】睡前覺得有點餓，選擇哪種食物比較不會給腸胃帶來負擔？', opts: ['麻辣鍋', '炸薯條', '一小杯溫牛奶', '泡麵'], ans: 2, exp: '睡前吃太油太辣會影響睡眠，一小杯牛奶負擔較小。' },
+    { q: '【熱量計算】某飲料標示每 100 毫升熱量 40 大卡。這罐飲料共 300 毫升，喝完攝取多少熱量？', opts: ['40大卡', '80大卡', '120大卡', '160大卡'], ans: 2, exp: '40大卡 × 3 (300毫升是100毫升的3倍) = 120大卡。' },
+    { q: '小明看電視時不知不覺吃光一包洋芋片，這是受到什麼因素影響？', opts: ['肚子太餓', '媒體與環境誘惑，未專心飲食', '補充營養', '媽媽規定的'], ans: 1, exp: '看電視會分散注意力，容易受環境誘惑吃下過多零食。' },
+    { q: '食品包裝若有「破損」或「油汙」，代表什麼？', opts: ['顯示保存環境不良或密封不牢', '特別好吃', '特別設計', '剛出爐'], ans: 0, exp: '包裝破損會讓食物接觸空氣變質，油汙代表倉儲髒亂。' },
+    { q: '「鮮乳標章」(有牛圖案) 代表什麼？', opts: ['加了糖的牛奶', '進口牛奶', '使用國產生乳製造的100%純鮮乳', '保久乳'], ans: 2, exp: '鮮乳標章是國產純鮮乳的安心認證。' },
+    { q: '要培養均衡飲食的好習慣，下列哪個觀念最正確？', opts: ['一天沒做好就放棄', '慢慢培養成每天的習慣', '只要運動就能隨便吃', '生病才需要注意'], ans: 1, exp: '好習慣需要時間累積，每天進步一點點，身體就會更健康！' }
+  ];
+
+  /* ===== 系統與 UI 控制 ===== */
+  window.onload = () => {
+    if(localStorage.getItem('player_name')) document.getElementById('player-name').value = localStorage.getItem('player_name');
+  };
+
+  function switchScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function selectChar(emoji, btn) {
+    gameState.character = emoji;
+    document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
+
+  function startTutorial() {
+    const n = document.getElementById('player-name').value.trim();
+    if(!n) return alert('請輸入名字！');
+    gameState.name = n;
+    document.querySelectorAll('.player-avatar-display').forEach(el => el.textContent = gameState.character);
+    
+    // 初始化輪播計時器介面
+    renderTutorialNav();
+    switchScreen('tutorial-screen');
+  }
+
+  /* ===== 強制閱讀計時器 (教材區) ===== */
+  let tutTimer;
+  function renderTutorialNav() {
+    const navDiv = document.getElementById('carousel-nav');
+    navDiv.innerHTML = '';
+    
+    const isLast = (gameState.tutPage === 7);
+    
+    // 返回按鈕
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'nav-btn'; prevBtn.textContent = '← 上一頁';
+    prevBtn.disabled = (gameState.tutPage === 0);
+    prevBtn.onclick = () => { gameState.tutPage--; updateCarousel(); };
+    navDiv.appendChild(prevBtn);
+
+    // 下一頁 / 挑戰按鈕 (含計時器)
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'nav-btn'; 
+    nextBtn.style.backgroundColor = isLast ? '#4CAF50' : '#64B5F6';
+    nextBtn.disabled = true;
+    navDiv.appendChild(nextBtn);
+
+    clearInterval(tutTimer);
+    let timeLeft = 12; // 強制停留 12 秒
+    nextBtn.textContent = `請仔細閱讀 (${timeLeft}s)`;
+    
+    tutTimer = setInterval(() => {
+      timeLeft--;
+      if(timeLeft > 0) {
+        nextBtn.textContent = `請仔細閱讀 (${timeLeft}s)`;
+      } else {
+        clearInterval(tutTimer);
+        nextBtn.disabled = false;
+        nextBtn.textContent = isLast ? '我已學習完畢，開始挑戰！ 🚀' : '下一頁 →';
+        nextBtn.onclick = () => {
+          if(isLast) startRPG();
+          else { gameState.tutPage++; updateCarousel(); }
+        };
+      }
+    }, 1000);
+  }
+
+  function updateCarousel() {
+    document.querySelectorAll('.carousel-content').forEach((el, i) => { el.classList.toggle('active', i === gameState.tutPage); });
+    document.getElementById('carousel-page').textContent = gameState.tutPage + 1;
+    renderTutorialNav();
+  }
+
+  /* ===== 階段一：RPG 購物 (15題) ===== */
+  function startRPG() {
+    gameState.rpgStep = 0; gameState.rpgScore = 0;
+    document.getElementById('rpg-score').textContent = '0';
+    renderRpgItem();
+    switchScreen('rpg-screen');
+  }
+
+  function renderRpgItem() {
+    const item = rpgItems[gameState.rpgStep];
+    document.getElementById('rpg-progress').textContent = gameState.rpgStep + 1;
+    document.getElementById('rpg-item-emoji').textContent = item.emoji;
+    document.getElementById('rpg-item-name').textContent = item.name;
+    document.getElementById('rpg-item-desc').textContent = item.desc;
+    
+    const dialogues = ['這個當午餐好嗎？', '要注意看標示喔！', '聰明購物停看聽！', '你會怎麼選呢？'];
+    document.getElementById('player-speech').textContent = dialogues[gameState.rpgStep % dialogues.length];
+  }
+
+  function handleRpgChoice(choice) {
+    const item = rpgItems[gameState.rpgStep];
+    const isCorrect = (choice === item.correct);
+    if(isCorrect) {
+      gameState.rpgScore += 10; // 15題 * 10 = 150分
+      document.getElementById('rpg-score').textContent = gameState.rpgScore;
+    }
+    showFeedback(isCorrect, item.explain, () => {
+      gameState.rpgStep++;
+      if(gameState.rpgStep < rpgItems.length) renderRpgItem();
+      else startDragGame();
+    });
+  }
+
+  /* ===== 階段二：拖曳分類 (10個) ===== */
+  let draggedItemData = null;
+  
+  function startDragGame() {
+    gameState.dragScore = 0; gameState.dragLeft = dragItemsData.length;
+    document.getElementById('drag-score').textContent = '0';
+    document.getElementById('drag-left').textContent = gameState.dragLeft;
+    
+    const pool = document.getElementById('drag-pool');
+    const healthyBox = document.getElementById('zone-healthy-items');
+    const trashBox = document.getElementById('zone-trash-items');
+    pool.innerHTML = ''; healthyBox.innerHTML = ''; trashBox.innerHTML = '';
+
+    // 打亂生成食物標籤
+    const shuffled = [...dragItemsData].sort(() => Math.random() - 0.5);
+    shuffled.forEach((item, idx) => {
+      const div = document.createElement('div');
+      div.className = 'drag-item'; div.textContent = item.name; div.draggable = true;
+      div.id = 'drag-item-' + idx;
+      
+      div.addEventListener('dragstart', (e) => {
+        draggedItemData = { el: div, type: item.type, name: item.name };
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      pool.appendChild(div);
+    });
+
+    // 設定放置區事件
+    document.querySelectorAll('.zone').forEach(zone => {
+      // 移除舊的 event listeners 避免重複觸發
+      const newZone = zone.cloneNode(true);
+      zone.parentNode.replaceChild(newZone, zone);
+      
+      newZone.addEventListener('dragover', e => { e.preventDefault(); newZone.classList.add('drag-over'); });
+      newZone.addEventListener('dragleave', () => newZone.classList.remove('drag-over'));
+      newZone.addEventListener('drop', e => {
+        e.preventDefault(); newZone.classList.remove('drag-over');
+        handleDrop(newZone);
+      });
+    });
+
+    switchScreen('drag-screen');
+  }
+
+  function handleDrop(zone) {
+    if(!draggedItemData) return;
+    const targetType = zone.dataset.type;
+    const isCorrect = (draggedItemData.type === targetType);
+    
+    draggedItemData.el.classList.add('placed');
+    
+    const tag = document.createElement('div');
+    tag.className = `placed-tag ${isCorrect ? 'correct' : 'wrong'}`;
+    tag.textContent = draggedItemData.name;
+    zone.querySelector('.placed-items').appendChild(tag);
+
+    if(isCorrect) {
+      gameState.dragScore += 10; // 10個 * 10 = 100分
+      document.getElementById('drag-score').textContent = gameState.dragScore;
+    }
+    
+    gameState.dragLeft--;
+    document.getElementById('drag-left').textContent = gameState.dragLeft;
+    draggedItemData = null;
+
+    if(gameState.dragLeft === 0) {
+      setTimeout(() => startQuiz(), 1000);
+    }
+  }
+
+  /* ===== 階段三：情境問答 (15題) ===== */
+  function startQuiz() {
+    gameState.quizStep = 0; gameState.quizScore = 0;
+    document.getElementById('quiz-score-display').textContent = '0';
+    renderQuizItem();
+    switchScreen('quiz-screen');
+  }
+
+  function renderQuizItem() {
+    const q = quizItems[gameState.quizStep];
+    document.getElementById('quiz-progress').textContent = gameState.quizStep + 1;
+    document.getElementById('quiz-q').textContent = q.q;
+    
+    const optsDiv = document.getElementById('quiz-opts');
+    optsDiv.innerHTML = '';
+    
+    const optsData = q.opts.map((text, idx) => ({ text, isAns: idx === q.ans })).sort(() => Math.random() - 0.5);
+    
+    optsData.forEach(o => {
+      const btn = document.createElement('button');
+      btn.className = 'opt-btn'; btn.textContent = o.text;
+      btn.onclick = () => handleQuizChoice(o.isAns, btn, q.exp);
+      optsDiv.appendChild(btn);
+    });
+  }
+
+  function handleQuizChoice(isCorrect, btn, explain) {
+    document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+    if(isCorrect) {
+      btn.classList.add('correct');
+      gameState.quizScore += 10; // 15題 * 10 = 150分
+      document.getElementById('quiz-score-display').textContent = gameState.quizScore;
+    } else {
+      btn.classList.add('wrong');
+    }
+    setTimeout(() => {
+      showFeedback(isCorrect, explain, () => {
+        gameState.quizStep++;
+        if(gameState.quizStep < quizItems.length) renderQuizItem();
+        else showResult();
+      });
+    }, 600);
+  }
+
+  /* ===== 回饋與結果 ===== */
+  function showFeedback(isCorrect, desc, callback) {
+    const modal = document.getElementById('feedback-modal');
+    document.getElementById('fb-icon').textContent = isCorrect ? '✅' : '❌';
+    document.getElementById('fb-title').textContent = isCorrect ? '選擇正確！' : '哎呀，選錯了！';
+    document.getElementById('fb-title').style.color = isCorrect ? '#4CAF50' : '#E53935';
+    document.getElementById('fb-desc').textContent = desc;
+    
+    const btn = document.getElementById('fb-btn');
+    btn.onclick = () => { modal.style.display = 'none'; callback(); };
+    modal.style.display = 'flex';
+  }
+
+  function showResult() {
+    const total = gameState.rpgScore + gameState.dragScore + gameState.quizScore;
+    
+    document.getElementById('final-name').textContent = `${gameState.name} 的探險化身 ${gameState.character}`;
+    document.getElementById('final-score').textContent = total;
+    
+    const titleEl = document.getElementById('result-title');
+    const msgEl = document.getElementById('result-msg');
+    const emojiEl = document.getElementById('result-emoji');
+    const btnEl = document.getElementById('result-btn');
+
+    if (total >= PASSING_SCORE) {
+      localStorage.setItem('score_level2', total);
+      emojiEl.textContent = '🏆'; titleEl.textContent = '第二關 闖關成功！'; titleEl.style.color = '#E65100';
+      msgEl.innerHTML = `太棒了！你獲得了 ${total} 分。<br>成功完成超商購物、健康分類與情境問答！<br>你的分數已自動存檔。`;
+      btnEl.textContent = '完成任務 👋';
+      btnEl.onclick = () => alert('恭喜過關！請關閉網頁，期待下堂課的挑戰！');
+    } else {
+      emojiEl.textContent = '💪'; titleEl.textContent = '哎呀，闖關失敗！'; titleEl.style.color = '#E53935';
+      msgEl.innerHTML = `你獲得了 ${total} 分。<br>通關門檻為 <strong>${PASSING_SCORE} 分</strong>。請重新檢視教材並再挑戰一次，加深對健康飲食的印象吧！`;
+      btnEl.textContent = '重新挑戰 🔄';
+      btnEl.onclick = () => restartGame();
+    }
+    
+    switchScreen('result-screen');
+  }
+
+  function restartGame() {
+    gameState.tutPage = 0; updateCarousel(); switchScreen('lobby-screen');
+  }
+  </script>
+ </body>
+</html>
